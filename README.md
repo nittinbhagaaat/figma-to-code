@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Figma2Code
 
-## Getting Started
+A deterministic **Figma → code compiler** with a full SaaS around it: accounts, workspaces, roles, email
+invitations, Figma import, a design inspector, a Monaco-based Code Studio with sandboxed live preview, immutable
+version history and ZIP export. **No AI/LLM is used anywhere in conversion.** Free; no billing or limits.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Figma URL / .fig ─▶ source adapter ─▶ normalized design tree ─▶ IR (layout analysis, styles)
+                                                                   │
+                         component extraction ◀────────────────────┘
+                                   ▼
+                     HTML │ React (Vite) │ Next.js   ×   Plain CSS │ Tailwind v4
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Stack:** Next.js (App Router) · JavaScript only · React · Tailwind v4 · shadcn/ui · Lucide · React Hook Form + Zod · Zustand · Mongoose/MongoDB · Monaco.
+- **Engine:** `src/engine/` is UI-independent and has no I/O; it is unit-tested on its own.
+- **Docs:** [feature compatibility & limitations](docs/COMPATIBILITY.md) · [deployment](docs/DEPLOYMENT.md)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Quick start
+```bash
+cp .env.example .env.local      # set MONGODB_URI and APP_SECRET
+npm install
+npm run dev                     # http://localhost:3000
+```
+Register → verify (without an email provider the link is printed in the server console) → create a workspace and a
+project → add your Figma token in Settings → import a URL or `.fig` → select frames → generate.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Layout
+```
+src/app/            routes + route handlers (api/)      src/engine/    parsers · ir · layout · styles · components · generators
+src/services/       auth · workspace · project · team    src/models/    Mongoose schemas
+                    figma · conversion · export · email  src/lib/       permissions · rate-limit · storage · preview runtime
+```
 
-## Learn More
+## Security summary
+bcrypt (cost 12) · hashed single-use verify/reset/invite tokens · DB-backed sessions, HttpOnly + SameSite=Lax cookies, new token on every
+login (no fixation), all sessions revoked on password reset/change · lockout + Mongo-backed rate limits · same-origin check on mutating
+requests · every API enforces workspace membership and role server-side (non-members get 404) · Zod validation on all inputs ·
+Figma tokens AES-256-GCM encrypted, never returned to the client · upload signature/size checks, ZIP path-traversal guards ·
+preview iframes sandboxed with an opaque origin · generic 500s (no stack traces to clients).
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Known limits (read before relying on it)
+See [COMPATIBILITY.md](docs/COMPATIBILITY.md). In short: output is clean and deterministic but not pixel-perfect;
+`.fig` parsing is implemented against the real container format but **not yet verified against Figma-produced files**;
+screenshots are references only; Code Studio's React/Next preview is an in-iframe transpile, not a full bundler build.

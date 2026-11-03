@@ -1,16 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
-      },
-    },
-  },
+  serverExternalPackages: ["mongoose", "bcryptjs", "nodemailer"],
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
+  experimental: { serverActions: { bodySizeLimit: "30mb" } },
 };
 
 export default nextConfig;
